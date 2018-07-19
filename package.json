@@ -1,5 +1,5 @@
 {
-  "name": "dynamo-utils",
+  "name": "awsdynamoutils",
   "version": "1.0.0",
   "description": "Utils for dynamodb aws-sdk",
   "main": "index.js",
