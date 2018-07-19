@@ -1,7 +1,6 @@
 const uuid = require('uuid/v4')
 const AWS = require('aws-sdk')
 
-const documentClient = new AWS.DynamoDB.DocumentClient()
 
 const mergedParams = (...params) =>
   params.reduce(
@@ -47,113 +46,122 @@ const getId = () =>
     .split('-')
     .join('')
 
-module.exports = {
-  tableParams: (
-    tableName,
-    keyName,
-    keyType = 'S',
-    provisionedThroughput = ProvisionedThroughput
-  ) => ({
-    TableName: tableName,
-    KeySchema: [
-      {
-        AttributeName: keyName,
-        KeyType: 'HASH'
-      }
-    ],
-    AttributeDefinitions: [
-      {
-        AttributeName: keyName,
-        AttributeType: keyType
-      }
-    ],
-    ProvisionedThroughput: provisionedThroughput
-  }),
-  tableParamsWithCompositeKey: (
-    tableName,
-    hashName,
-    rangeName,
-    hashType = 'S',
-    rangeType = 'S',
-    provisionedThroughput = ProvisionedThroughput
-  ) => ({
-    TableName: tableName,
-    KeySchema: [
-      {
-        AttributeName: hashName,
-        KeyType: 'HASH'
-      },
-      {
-        AttributeName: rangeName,
-        KeyType: 'RANGE'
-      }
-    ],
-    AttributeDefinitions: [
-      {
-        AttributeName: hashName,
-        AttributeType: hashType
-      },
-      {
-        AttributeName: rangeName,
-        AttributeType: rangeType
-      }
-    ],
-    ProvisionedThroughput: provisionedThroughput
-  }),
-  flatUpdateParams: params => ({
-    UpdateExpression: `set ${Object.entries(params)
-      .map(([key]) => `#${key} = :${key}, `)
-      .reduce((acc, str) => acc + str)
-      .slice(0, -2)}`,
-    ExpressionAttributeNames: Object.keys(params).reduce(
-      (acc, key) => ({
-        ...acc,
-        [`#${key}`]: key
-      }),
-      {}
-    ),
-    ExpressionAttributeValues: Object.entries(params).reduce(
-      (acc, [key, value]) => ({
-        ...acc,
-        [`:${key}`]: value
-      }),
-      {}
-    )
-  }),
-  searchByKeyParams: (key, value) => ({
-    FilterExpression: '#a = :aa',
-    ExpressionAttributeNames: {
-      '#a': key
-    },
-    ExpressionAttributeValues: {
-      ':aa': value
-    }
-  }),
-  searchByPKParams: (key, value) => ({
-    KeyConditionExpression: '#a = :aa',
-    ExpressionAttributeNames: {
-      '#a': key
-    },
-    ExpressionAttributeValues: {
-      ':aa': value
-    }
-  }),
-  getId,
-  withId: item =>
-    item.id
-      ? item
-      : {
-          ...item,
-          id: getId()
+const getModule = (config) => {
+  const documentClient = new AWS.DynamoDB.DocumentClient(config)
+
+  return ({
+    tableParams: (
+      tableName,
+      keyName,
+      keyType = 'S',
+      provisionedThroughput = ProvisionedThroughput
+    ) => ({
+      TableName: tableName,
+      KeySchema: [
+        {
+          AttributeName: keyName,
+          KeyType: 'HASH'
+        }
+      ],
+      AttributeDefinitions: [
+        {
+          AttributeName: keyName,
+          AttributeType: keyType
+        }
+      ],
+      ProvisionedThroughput: provisionedThroughput
+    }),
+    tableParamsWithCompositeKey: (
+      tableName,
+      hashName,
+      rangeName,
+      hashType = 'S',
+      rangeType = 'S',
+      provisionedThroughput = ProvisionedThroughput
+    ) => ({
+      TableName: tableName,
+      KeySchema: [
+        {
+          AttributeName: hashName,
+          KeyType: 'HASH'
         },
-  put: (TableName, Item) => documentClient.put({ TableName, Item }).promise(),
-  mergedParams,
-  projectionExpression,
-  getByPK: (params, attributes = undefined) =>
-    documentClient
-      .get(
-        mergedParams(params, attributes ? projectionExpression(attributes) : {})
+        {
+          AttributeName: rangeName,
+          KeyType: 'RANGE'
+        }
+      ],
+      AttributeDefinitions: [
+        {
+          AttributeName: hashName,
+          AttributeType: hashType
+        },
+        {
+          AttributeName: rangeName,
+          AttributeType: rangeType
+        }
+      ],
+      ProvisionedThroughput: provisionedThroughput
+    }),
+    flatUpdateParams: params => ({
+      UpdateExpression: `set ${Object.entries(params)
+        .map(([key]) => `#${key} = :${key}, `)
+        .reduce((acc, str) => acc + str)
+        .slice(0, -2)}`,
+      ExpressionAttributeNames: Object.keys(params).reduce(
+        (acc, key) => ({
+          ...acc,
+          [`#${key}`]: key
+        }),
+        {}
+      ),
+      ExpressionAttributeValues: Object.entries(params).reduce(
+        (acc, [key, value]) => ({
+          ...acc,
+          [`:${key}`]: value
+        }),
+        {}
       )
-      .promise()
-      .then(data => (Object.keys(data).length ? data.Item : undefined))
+    }),
+    searchByKeyParams: (key, value) => ({
+      FilterExpression: '#a = :aa',
+      ExpressionAttributeNames: {
+        '#a': key
+      },
+      ExpressionAttributeValues: {
+        ':aa': value
+      }
+    }),
+    searchByPKParams: (key, value) => ({
+      KeyConditionExpression: '#a = :aa',
+      ExpressionAttributeNames: {
+        '#a': key
+      },
+      ExpressionAttributeValues: {
+        ':aa': value
+      }
+    }),
+    getId,
+    withId: item =>
+      item.id
+        ? item
+        : {
+            ...item,
+            id: getId()
+          },
+    put: (TableName, Item) => documentClient.put({ TableName, Item }).promise(),
+    mergedParams,
+    projectionExpression,
+    getByPK: (params, attributes = undefined) =>
+      documentClient
+        .get(
+          mergedParams(params, attributes ? projectionExpression(attributes) : {})
+        )
+        .promise()
+        .then(data => (Object.keys(data).length ? data.Item : undefined))
+  })
+}
+
+module.exports = {
+  ...getModule({}),
+  getModule,
 }
