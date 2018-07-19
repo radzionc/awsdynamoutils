@@ -157,7 +157,56 @@ const getModule = (config) => {
           mergedParams(params, attributes ? projectionExpression(attributes) : {})
         )
         .promise()
-        .then(data => (Object.keys(data).length ? data.Item : undefined))
+        .then(data => (Object.keys(data).length ? data.Item : undefined)),
+    putToList: (params, listName, object) =>
+      documentClient
+        .update({
+          ...params,
+          UpdateExpression: 'set #listName = list_append(#listName, :newObject)',
+          ExpressionAttributeValues: {
+            ':newObject': [object]
+          },
+          ExpressionAttributeNames: {
+            '#listName': listName
+          }
+        })
+        .promise(),
+    removeFromListByIndex: (params, listName, index) =>
+      documentClient
+        .update({
+          ...params,
+          UpdateExpression: `remove #listName[${index}]`,
+          ExpressionAttributeNames: {
+            '#listName': listName
+          }
+        })
+        .promise(),
+    setNewValue: (params, propName, value) =>
+      documentClient
+        .update({
+          ...params,
+          UpdateExpression: `set #value = :newValue`,
+          ExpressionAttributeValues: {
+            ':newValue': value
+          },
+          ExpressionAttributeNames: {
+            '#value': propName
+          }
+        })
+        .promise(),
+    mergeInList: (params, listName, list) =>
+      documentClient
+        .update({
+          ...params,
+          UpdateExpression: `set #listName = list_append(#listName, :mergeList)`,
+          ExpressionAttributeValues: {
+            ':mergeList': list
+          },
+          ExpressionAttributeNames: {
+            '#listName': listName
+          }
+        })
+        .promise()
   })
 }
 
