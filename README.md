@@ -1,6 +1,10 @@
-# Utils for aws-sdk dynamoDB
+# Utils for aws-sdk dynamoDB(in development)
 
-### install by typing:
+## Install
+
 ```bash
-$ npm install awsdynamoutils --save
+npm install --save awsdynamoutils
 ```
+## License
+
+MIT © [RodionChachura](https://geekrodion.com)
