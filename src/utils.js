@@ -46,6 +46,18 @@ const getId = () =>
     .split('-')
     .join('')
 
+const paginationAware = method => async params => {
+  const getItems = async (items, lastEvaluatedKey, firstTime = false) => {
+    if (!lastEvaluatedKey) return items
+
+    const { Items, LastEvaluatedKey } = await documentClient[method](
+      firstTime ? params : { ...params, ExclusiveStartKey: lastEvaluatedKey }
+    ).promise()
+    return await getItems([...items, ...Items], LastEvaluatedKey)
+  }
+  return getItems([], true, true)
+}
+
 const getModule = (config) => {
   const documentClient = new AWS.DynamoDB.DocumentClient(config)
 
@@ -206,7 +218,8 @@ const getModule = (config) => {
             '#listName': listName
           }
         })
-        .promise()
+        .promise(),
+    paginationAware
   })
 }
 
