@@ -50,6 +50,7 @@ const getModule = (config) => {
   const documentClient = new AWS.DynamoDB.DocumentClient(config)
 
   return ({
+    documentClient,
     tableParams: (
       tableName,
       keyName,
@@ -217,7 +218,12 @@ const getModule = (config) => {
         return await getItems([...items, ...Items], LastEvaluatedKey)
       }
       return getItems([], true, true)
-    }
+    },
+    getAll: (TableName, params) =>
+      documentClient
+        .scan({ TableName, ...projectionExpression(params) })
+        .promise()
+        .then(({ Items }) => Items),
   })
 }
 
