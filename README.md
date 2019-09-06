@@ -1,4 +1,4 @@
-# breakout-game
+# Utils for AWS DynamoDB
 
 >
 
