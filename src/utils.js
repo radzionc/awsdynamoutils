@@ -49,6 +49,34 @@ const getId = () =>
 const getModule = (config) => {
   const documentClient = new AWS.DynamoDB.DocumentClient(config)
 
+  const paginationAware = method => async params => {
+    const getItems = async (items, lastEvaluatedKey, firstTime = false) => {
+      if (!lastEvaluatedKey) return items
+  
+      const { Items, LastEvaluatedKey } = await documentClient[method](
+        firstTime ? params : { ...params, ExclusiveStartKey: lastEvaluatedKey }
+      ).promise()
+      return await getItems([...items, ...Items], LastEvaluatedKey)
+    }
+    return getItems([], true, true)
+  }
+  
+  const scan = paginationAware('scan')
+  
+  const mergeInList = (params, listName, list) =>
+    documentClient
+      .update({
+        ...params,
+        UpdateExpression: `set #listName = list_append(#listName, :mergeList)`,
+        ExpressionAttributeValues: {
+          ':mergeList': list
+        },
+        ExpressionAttributeNames: {
+          '#listName': listName
+        }
+      })
+      .promise()
+
   return ({
     documentClient,
     tableParams: (
@@ -103,6 +131,52 @@ const getModule = (config) => {
       ],
       ProvisionedThroughput: provisionedThroughput
     }),
+    projectionExpression,
+    paginationAware,
+    getAll: (TableName, params) =>
+      scan({ TableName, ...projectionExpression(params) })
+        .promise()
+        .then(({ Items }) => Items),
+    searchByPKParams: (key, value) => ({
+      KeyConditionExpression: '#a = :aa',
+      ExpressionAttributeNames: {
+        '#a': key
+      },
+      ExpressionAttributeValues: {
+        ':aa': value
+      }
+    }),
+    searchByKeyParams: (key, value) => ({
+      FilterExpression: '#a = :aa',
+      ExpressionAttributeNames: {
+        '#a': key
+      },
+      ExpressionAttributeValues: {
+        ':aa': value
+      }
+    }),
+    mergedParams,
+    getId,
+    withId: item =>
+      item.id
+        ? item
+        : {
+            ...item,
+            id: getId()
+          },
+    setNewValue: (params, propName, value) =>
+      documentClient
+        .update({
+          ...params,
+          UpdateExpression: `set #value = :newValue`,
+          ExpressionAttributeValues: {
+            ':newValue': value
+          },
+          ExpressionAttributeNames: {
+            '#value': propName
+          }
+        })
+        .promise(),
     flatUpdateParams: params => ({
       UpdateExpression: `set ${Object.entries(params)
         .map(([key]) => `#${key} = :${key}, `)
@@ -123,35 +197,7 @@ const getModule = (config) => {
         {}
       )
     }),
-    searchByKeyParams: (key, value) => ({
-      FilterExpression: '#a = :aa',
-      ExpressionAttributeNames: {
-        '#a': key
-      },
-      ExpressionAttributeValues: {
-        ':aa': value
-      }
-    }),
-    searchByPKParams: (key, value) => ({
-      KeyConditionExpression: '#a = :aa',
-      ExpressionAttributeNames: {
-        '#a': key
-      },
-      ExpressionAttributeValues: {
-        ':aa': value
-      }
-    }),
-    getId,
-    withId: item =>
-      item.id
-        ? item
-        : {
-            ...item,
-            id: getId()
-          },
     put: (TableName, Item) => documentClient.put({ TableName, Item }).promise(),
-    mergedParams,
-    projectionExpression,
     getByPK: (params, attributes = undefined) =>
       documentClient
         .get(
@@ -159,19 +205,8 @@ const getModule = (config) => {
         )
         .promise()
         .then(data => (Object.keys(data).length ? data.Item : undefined)),
-    putToList: (params, listName, object) =>
-      documentClient
-        .update({
-          ...params,
-          UpdateExpression: 'set #listName = list_append(#listName, :newObject)',
-          ExpressionAttributeValues: {
-            ':newObject': [object]
-          },
-          ExpressionAttributeNames: {
-            '#listName': listName
-          }
-        })
-        .promise(),
+    mergeInList,
+    putToList: (params, listName, object) => mergeInList(params, listName, [object]),
     removeFromListByIndex: (params, listName, index) =>
       documentClient
         .update({
@@ -181,49 +216,7 @@ const getModule = (config) => {
             '#listName': listName
           }
         })
-        .promise(),
-    setNewValue: (params, propName, value) =>
-      documentClient
-        .update({
-          ...params,
-          UpdateExpression: `set #value = :newValue`,
-          ExpressionAttributeValues: {
-            ':newValue': value
-          },
-          ExpressionAttributeNames: {
-            '#value': propName
-          }
-        })
-        .promise(),
-    mergeInList: (params, listName, list) =>
-      documentClient
-        .update({
-          ...params,
-          UpdateExpression: `set #listName = list_append(#listName, :mergeList)`,
-          ExpressionAttributeValues: {
-            ':mergeList': list
-          },
-          ExpressionAttributeNames: {
-            '#listName': listName
-          }
-        })
-        .promise(),
-    paginationAware: method => async params => {
-      const getItems = async (items, lastEvaluatedKey, firstTime = false) => {
-        if (!lastEvaluatedKey) return items
-    
-        const { Items, LastEvaluatedKey } = await documentClient[method](
-          firstTime ? params : { ...params, ExclusiveStartKey: lastEvaluatedKey }
-        ).promise()
-        return await getItems([...items, ...Items], LastEvaluatedKey)
-      }
-      return getItems([], true, true)
-    },
-    getAll: (TableName, params) =>
-      documentClient
-        .scan({ TableName, ...projectionExpression(params) })
         .promise()
-        .then(({ Items }) => Items),
   })
 }
 
