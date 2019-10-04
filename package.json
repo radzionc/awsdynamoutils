@@ -1,6 +1,6 @@
 {
   "name": "awsdynamoutils",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Utils for dynamodb aws-sdk",
   "main": "src/utils.js",
   "scripts": {

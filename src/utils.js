@@ -134,9 +134,7 @@ const getModule = (config) => {
     projectionExpression,
     paginationAware,
     getAll: (TableName, params) =>
-      scan({ TableName, ...projectionExpression(params) })
-        .promise()
-        .then(({ Items }) => Items),
+      scan({ TableName, ...projectionExpression(params) }),
     searchByPKParams: (key, value) => ({
       KeyConditionExpression: '#a = :aa',
       ExpressionAttributeNames: {
