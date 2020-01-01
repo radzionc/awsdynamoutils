@@ -214,7 +214,11 @@ const getModule = (config) => {
             '#listName': listName
           }
         })
-        .promise()
+        .promise(),
+    getWithoutFields: fields => fields.reduce(
+      (acc, field, index) => `${index > 0 ? `${acc} and ` : ''}attribute_not_exists(${field})`,
+      ''
+    )
   })
 }
 
