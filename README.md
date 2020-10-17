@@ -10,7 +10,7 @@
 npm install --save awsdynamoutils
 ```
 
-## [Medium Story](https://medium.com/p/1ca38abdb355)
+## [Blog Post](https://geekrodion.com/blog/dynamodb-library)
 
 ## License
 
